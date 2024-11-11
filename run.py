@@ -65,9 +65,9 @@ def sync_with_peers(blockchain, port, peers):
 
 
 def main():
-    # Fixed Genesis Wallet Key Pair (Replace with your fixed keys)
-    fixed_genesis_private_key = "JyXpXRvosvED7QaijlzENRK0F0cbViheekZ3U+kBQfo="  # Replace with your actual fixed private key
-    fixed_genesis_public_key = "A/yH130TSm3zCX7tEffvTmJDYSeq4uYo79WkkY4El23x"    # Replace with your actual fixed public key
+    # Fixed Genesis Wallet Key Pair (Ensure these keys are URL-safe Base64 encoded without padding)
+    fixed_genesis_private_key = "66DfCadKUjJBkBbOlURslW1V020v6MzLq7ExQb15j_A"  # Example URL-safe key
+    fixed_genesis_public_key = "AtV2Ohy1KCwD_RAJ4D6yB60I-CxBbtpubhGmr55LTtMQ"    # Example URL-safe key
 
     configs = [
         (5000, 'blockchain_node1', ['http://127.0.0.1:5001', 'http://127.0.0.1:5002']),
@@ -78,7 +78,6 @@ def main():
     for port, db_name, peers in configs:
         db_handler = CouchDBHandler(db_name)
         blockchain = Blockchain(db_handler, fixed_genesis_private_key, fixed_genesis_public_key)
-        #blockchain.wallets = {blockchain.genesis_public_key: 1000000}
         blockchain.peers = peers  # Assign peers
         # Start Flask app thread
         app_thread = threading.Thread(target=run_app, args=(blockchain, port), daemon=True)

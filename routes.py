@@ -197,7 +197,6 @@ def setup_routes(app, blockchain, port):
             return jsonify({"error": str(e)}), 400
         
         
-
     @app.route('/transaction/submit_offchain', methods=['POST'])
     def submit_offchain_transaction():
         """
@@ -235,4 +234,4 @@ def setup_routes(app, blockchain, port):
             return jsonify({"message": "Off-chain transaction submitted successfully"}), 200
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 400
+            return jsonify({"error": str(e)}), 400 

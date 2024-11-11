@@ -248,7 +248,3 @@ class Blockchain:
         for wallet, balance in incoming_wallets.items():
             self.wallets[wallet] = balance
         self.save_state()
-
-
-
-    
