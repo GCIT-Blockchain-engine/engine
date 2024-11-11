@@ -1,0 +1,6 @@
+Flask
+CouchDB
+requests
+pycryptodome
+websockets
+ecdsa
