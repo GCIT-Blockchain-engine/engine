@@ -41,7 +41,7 @@ class Block:
     def to_dict(self):
         return {
             "index": self.index,
-            "transactions": self.transactions,
+            "transactions": self.transactions,  # Transactions are dicts
             "timestamp": self.timestamp,
             "previous_hash": self.previous_hash,
             "nonce": self.nonce,

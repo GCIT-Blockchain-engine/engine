@@ -1,7 +1,7 @@
-# blockchain/transaction.py
 
 import uuid
 import time
+
 
 class Transaction:
     def __init__(self, sender, recipient, amount, signature, transaction_id=None, timestamp=None):
@@ -13,11 +13,9 @@ class Transaction:
         self.timestamp = timestamp or self.generate_timestamp()
     
     def generate_transaction_id(self):
-        # Generate a unique transaction ID using UUID4
         return str(uuid.uuid4())
     
     def generate_timestamp(self):
-        # Generate the current timestamp
         return time.time()
     
     def to_dict(self):

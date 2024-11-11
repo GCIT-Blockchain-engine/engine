@@ -16,16 +16,16 @@ class Blockchain:
         self.wallets = {}
         self.peers = []  # List of peer URLs
         self.auto_mine_threshold = 4
-        
+
         if genesis_private_key and genesis_public_key:
             self.genesis_private_key = genesis_private_key
             self.genesis_public_key = genesis_public_key
         else:
             self.genesis_private_key, self.genesis_public_key = Crypto.generate_keypair()
-        
+
         self.ico_funds = {"GENESIS_WALLET": 1000000}  # Initialize ICO funds
         self.load_state()
-        
+
         if not self.chain:
             self.chain = [self.create_genesis_block()]
             self.wallets = {self.genesis_public_key: 1000000}
@@ -90,7 +90,7 @@ class Blockchain:
         if transaction['signature'] in self.mempool:
             print("Transaction already in mempool.")
             return
-        self.mempool[transaction['signature']] = transaction
+        self.mempool[transaction['signature']] = transaction  # Store as dict
         self.save_state()
         print(f"Transaction added to mempool: {transaction}")
         if len(self.mempool) >= self.auto_mine_threshold:
@@ -127,7 +127,7 @@ class Blockchain:
         if not self.mempool:
             print("No transactions to mine.")
             return None
-        pending_transactions = list(self.mempool.values())
+        pending_transactions = list(self.mempool.values())  # List of dicts
         new_block = Block(len(self.chain), pending_transactions, self.chain[-1].compute_hash())
         new_block.mine(difficulty=4)
         self.chain.append(new_block)
@@ -248,7 +248,3 @@ class Blockchain:
         for wallet, balance in incoming_wallets.items():
             self.wallets[wallet] = balance
         self.save_state()
-
-
-
-    
