@@ -78,7 +78,7 @@ def main():
     for port, db_name, peers in configs:
         db_handler = CouchDBHandler(db_name)
         blockchain = Blockchain(db_handler, fixed_genesis_private_key, fixed_genesis_public_key)
-        blockchain.wallets = {blockchain.genesis_public_key: 1000000}
+        #blockchain.wallets = {blockchain.genesis_public_key: 1000000}
         blockchain.peers = peers  # Assign peers
         # Start Flask app thread
         app_thread = threading.Thread(target=run_app, args=(blockchain, port), daemon=True)

@@ -94,14 +94,19 @@ def setup_routes(app, blockchain, port):
         if len(incoming_chain_objs) > len(blockchain.chain):
             blockchain.chain = incoming_chain_objs
             blockchain.recalculate_wallets()
-            blockchain.mempool = {tx['signature']: tx for tx in incoming_pending_transactions}
+            # Merge incoming pending transactions with existing mempool
+            for tx in incoming_pending_transactions:
+                blockchain.mempool[tx['signature']] = tx
             blockchain.save_state()
             print("Blockchain synchronized with incoming data.")
             return jsonify({"message": "Blockchain updated"}), 200
         else:
-            # Do NOT replace the state if the incoming chain is not longer
-            print("Incoming chain is not longer. No synchronization performed.")
-            return jsonify({"message": "No update needed"}), 200
+            # Optionally, you can also merge mempools even if chains are same length
+            for tx in incoming_pending_transactions:
+                blockchain.mempool[tx['signature']] = tx
+            blockchain.save_state()
+            print("Mempool merged with incoming data.")
+            return jsonify({"message": "Mempool merged"}), 200
 
     @app.route('/request_chain', methods=['GET'])
     def request_chain():
