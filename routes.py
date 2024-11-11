@@ -1,11 +1,14 @@
 # routes.py
 
+import time
+import uuid
 from flask import request, jsonify
 import requests
 from blockchain.block import Block
 from blockchain.blockchain import Blockchain
 from blockchain.transaction import Transaction
 from blockchain.wallet import Wallet
+from cryptolib.crypto import Crypto
 
 
 def setup_routes(app, blockchain, port):
@@ -133,3 +136,103 @@ def setup_routes(app, blockchain, port):
                 if tx['sender'] == wallet_address or tx['recipient'] == wallet_address:
                     transactions.append(tx)
         return jsonify({"transactions": transactions}), 200
+
+
+    @app.route('/transaction/sign', methods=['POST'])
+    def sign_transaction():
+        """
+        Endpoint to show the signing process for a transaction.
+        Expects JSON with 'sender', 'recipient', 'amount', and 'private_key'.
+        Returns the message, signature, transaction_id, and timestamp.
+        """
+        data = request.json
+        sender = data.get('sender')
+        recipient = data.get('recipient')
+        amount = data.get('amount')
+        private_key = data.get('private_key')
+
+        if not sender or not recipient or not amount or not private_key:
+            return jsonify({"error": "Missing fields in request"}), 400
+
+        try:
+            message = f"{sender}{recipient}{amount}"
+            signature = Crypto.sign_transaction(private_key, message)
+            transaction_id = str(uuid.uuid4())
+            timestamp = time.time()
+
+            signing_details = {
+                "transaction_id": transaction_id,
+                "message": message,
+                "signature": signature,
+                "timestamp": timestamp
+            }
+
+            return jsonify(signing_details), 200
+
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        
+    @app.route('/transaction/verify', methods=['POST'])
+    def verify_transaction():
+        """
+        Endpoint to verify/validate a transaction signature.
+        Expects JSON with 'public_key', 'message', and 'signature'.
+        Returns whether the signature is valid.
+        """
+        data = request.json
+        public_key = data.get('public_key')
+        message = data.get('message')
+        signature = data.get('signature')
+
+        if not public_key or not message or not signature:
+            return jsonify({"error": "Missing fields in request"}), 400
+
+        try:
+            is_valid = Crypto.verify_signature(public_key, message, signature)
+            verification_result = {
+                "is_valid": is_valid
+            }
+            return jsonify(verification_result), 200
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        
+        
+
+    @app.route('/transaction/submit_offchain', methods=['POST'])
+    def submit_offchain_transaction():
+        """
+        Endpoint to submit an off-chain signed transaction to the blockchain.
+        Expects JSON with 'transaction_id', 'sender', 'recipient', 'amount', 'signature', and 'timestamp'.
+        """
+        data = request.json
+        required_fields = ['transaction_id', 'sender', 'recipient', 'amount', 'signature', 'timestamp']
+        if not all(field in data for field in required_fields):
+            return jsonify({"error": "Missing fields in transaction data"}), 400
+
+        try:
+            transaction = Transaction.from_dict(data)
+            # Verify the transaction signature
+            message = f"{transaction.sender}{transaction.recipient}{transaction.amount}"
+            if not Crypto.verify_signature(transaction.sender, message, transaction.signature):
+                return jsonify({"error": "Invalid signature"}), 400
+
+            # Check sender's balance
+            if blockchain.get_balance(transaction.sender) < transaction.amount:
+                return jsonify({"error": "Insufficient funds"}), 400
+
+            # Add transaction to mempool
+            blockchain.add_transaction(transaction.to_dict())
+
+            # Broadcast the transaction to peers
+            for peer in blockchain.peers:
+                try:
+                    response = requests.post(f'{peer}/transaction/add', json=transaction.to_dict(), timeout=5)
+                    if response.status_code != 200:
+                        print(f"Failed to broadcast transaction to {peer}: {response.text}")
+                except requests.exceptions.RequestException as e:
+                    print(f"Error broadcasting transaction to {peer}: {e}")
+
+            return jsonify({"message": "Off-chain transaction submitted successfully"}), 200
+
+        except Exception as e:
+            return jsonify({"error": str(e)}), 400
