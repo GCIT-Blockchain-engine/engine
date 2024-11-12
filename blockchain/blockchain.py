@@ -15,7 +15,7 @@ class Blockchain:
         self.mempool = {}  # Dictionary to store transactions by their signatures
         self.wallets = {}
         self.peers = []  # List of peer URLs
-        self.auto_mine_threshold = 4
+        self.auto_mine_threshold = 2
         
         if genesis_private_key and genesis_public_key:
             self.genesis_private_key = genesis_private_key
