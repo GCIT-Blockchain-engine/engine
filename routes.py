@@ -227,3 +227,56 @@ def setup_routes(app, blockchain, port):
 
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
+        
+
+
+
+    @app.route('/transaction/details', methods=['POST'])
+    def get_transaction_details():
+        """
+        Endpoint to retrieve transaction details using 'transaction_id'.
+        Expects JSON with 'transaction_id'.
+        Returns transaction details if found.
+        """
+        data = request.json
+        transaction_id = data.get('transaction_id')
+
+        if not transaction_id:
+            return jsonify({"error": "Missing transaction_id in request"}), 400
+
+        try:
+            # Reconstruct the transaction from transaction_id
+            transaction = Transaction.from_transaction_id(transaction_id)
+            transaction_dict = transaction.to_dict()
+
+            # Check if the transaction is in the mempool
+            if transaction_id in blockchain.mempool:
+                transaction_dict['status'] = 'pending'
+                return jsonify(transaction_dict), 200
+
+            # Search for the transaction in the blockchain
+            found_in_block = False
+            for block in blockchain.chain:
+                for tx in block.transactions:
+                    if tx['transaction_id'] == transaction_id:
+                        # Found the transaction; add block information
+                        transaction_dict.update(tx)
+                        transaction_dict['status'] = 'confirmed'
+                        transaction_dict['block_index'] = block.index
+                        transaction_dict['block_timestamp'] = block.timestamp
+                        found_in_block = True
+                        break
+                if found_in_block:
+                    break
+
+            if found_in_block:
+                return jsonify(transaction_dict), 200
+            else:
+                # Transaction not found in mempool or blockchain
+                return jsonify({"error": "Transaction not found"}), 404
+
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        
+
+        
