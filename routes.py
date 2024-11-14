@@ -142,7 +142,7 @@ def setup_routes(app, blockchain, port):
         """
         Endpoint to show the signing process for a transaction.
         Expects JSON with 'sender', 'recipient', 'amount', and 'private_key'.
-        Returns the message, signature, transaction_id, and timestamp.
+        Returns the transaction_id.
         """
         data = request.json
         sender = data.get('sender')
@@ -156,17 +156,13 @@ def setup_routes(app, blockchain, port):
         try:
             message = f"{sender}{recipient}{amount}"
             signature = Crypto.sign_transaction(private_key, message)
-            transaction_id = str(uuid.uuid4())
-            timestamp = time.time()
-
-            signing_details = {
-                "transaction_id": transaction_id,
-                "message": message,
-                "signature": signature,
-                "timestamp": timestamp
-            }
-
-            return jsonify(signing_details), 200
+            transaction = Transaction(
+                sender=sender,
+                recipient=recipient,
+                amount=amount,
+                signature=signature
+            )
+            return jsonify({"transaction_id": transaction.transaction_id}), 200
 
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
@@ -175,40 +171,37 @@ def setup_routes(app, blockchain, port):
     def verify_transaction():
         """
         Endpoint to verify/validate a transaction signature.
-        Expects JSON with 'public_key', 'message', and 'signature'.
+        Expects JSON with 'transaction_id'.
         Returns whether the signature is valid.
         """
         data = request.json
-        public_key = data.get('public_key')
-        message = data.get('message')
-        signature = data.get('signature')
+        transaction_id = data.get('transaction_id')
 
-        if not public_key or not message or not signature:
-            return jsonify({"error": "Missing fields in request"}), 400
+        if not transaction_id:
+            return jsonify({"error": "Missing transaction_id in request"}), 400
 
         try:
-            is_valid = Crypto.verify_signature(public_key, message, signature)
-            verification_result = {
-                "is_valid": is_valid
-            }
-            return jsonify(verification_result), 200
+            transaction = Transaction.from_transaction_id(transaction_id)
+            message = f"{transaction.sender}{transaction.recipient}{transaction.amount}"
+            is_valid = Crypto.verify_signature(transaction.sender, message, transaction.signature)
+            return jsonify({"is_valid": is_valid}), 200
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
-        
         
     @app.route('/transaction/submit_offchain', methods=['POST'])
     def submit_offchain_transaction():
         """
         Endpoint to submit an off-chain signed transaction to the blockchain.
-        Expects JSON with 'transaction_id', 'sender', 'recipient', 'amount', 'signature', and 'timestamp'.
+        Expects JSON with 'transaction_id'.
         """
         data = request.json
-        required_fields = ['transaction_id', 'sender', 'recipient', 'amount', 'signature', 'timestamp']
-        if not all(field in data for field in required_fields):
-            return jsonify({"error": "Missing fields in transaction data"}), 400
+        transaction_id = data.get('transaction_id')
+
+        if not transaction_id:
+            return jsonify({"error": "Missing transaction_id in request"}), 400
 
         try:
-            transaction = Transaction.from_dict(data)
+            transaction = Transaction.from_transaction_id(transaction_id)
             # Verify the transaction signature
             message = f"{transaction.sender}{transaction.recipient}{transaction.amount}"
             if not Crypto.verify_signature(transaction.sender, message, transaction.signature):
@@ -232,5 +225,5 @@ def setup_routes(app, blockchain, port):
 
             return jsonify({"message": "Off-chain transaction submitted successfully"}), 200
 
-        except Exception as e:
-            return jsonify({"error": str(e)}), 400 
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400

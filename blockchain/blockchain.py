@@ -34,12 +34,15 @@ class Blockchain:
 
     def create_genesis_block(self):
         # Transactions: "ICO" sends 1,000,000 to "GENESIS_WALLET"
-        ico_transactions = [{
-            "sender": "ICO",
-            "recipient": self.genesis_public_key,
-            "amount": 1000000,
-            "signature": "genesis"
-        }]
+        message = f"ICO{self.genesis_public_key}{1000000}"
+        signature = "genesis"
+        transaction = Transaction(
+            sender="ICO",
+            recipient=self.genesis_public_key,
+            amount=1000000,
+            signature=signature
+        )
+        ico_transactions = [transaction.to_dict()]
         fixed_timestamp = 1638316800.0  # Fixed timestamp (e.g., December 1, 2021)
         genesis_block = Block(0, ico_transactions, "0", timestamp=fixed_timestamp)
         genesis_block.mine(difficulty=4)
@@ -86,15 +89,20 @@ class Blockchain:
         return self.wallets.get(wallet_address, 0)
 
     def add_transaction(self, transaction):
-        if transaction['signature'] in self.mempool or any(tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions):
+        transaction_id = transaction.get('transaction_id')
+        if not transaction_id:
+            print("Transaction missing 'transaction_id'; generating a new one.")
+            transaction_obj = Transaction.from_dict(transaction)
+            transaction_id = transaction_obj.transaction_id
+            transaction = transaction_obj.to_dict()
+        if transaction_id in self.mempool or any(tx.get('transaction_id') == transaction_id for block in self.chain for tx in block.transactions):
             print("Duplicate transaction detected; not adding to mempool.")
             return
-        self.mempool[transaction['signature']] = transaction
+        self.mempool[transaction_id] = transaction
         self.save_state()
         print(f"Transaction added to mempool: {transaction}")
         if len(self.mempool) >= self.auto_mine_threshold:
             self.mine_and_save()
-
 
     def mine_and_save(self):
         """Mine a new block and save the blockchain state."""
@@ -128,6 +136,9 @@ class Blockchain:
             print("No transactions to mine.")
             return None
         pending_transactions = list(self.mempool.values())
+        # Add timestamp to transactions when they are included in a block
+        for tx in pending_transactions:
+            tx['timestamp'] = time.time()
         new_block = Block(len(self.chain), pending_transactions, self.chain[-1].compute_hash())
         new_block.mine(difficulty=4)
         self.chain.append(new_block)
@@ -156,6 +167,12 @@ class Blockchain:
             self.wallets[recipient] = 0
         self.wallets[sender] -= amount
         self.wallets[recipient] += amount
+
+        # Add timestamp to the transaction when added to the block
+        for tx in self.mempool.values():
+            if tx['sender'] == sender and tx['recipient'] == recipient and tx['amount'] == amount:
+                tx['timestamp'] = time.time()
+
 
     def sync_chain(self, incoming_chain):
         new_chain = [Block.from_dict(block) for block in incoming_chain]
