@@ -88,6 +88,9 @@ class Blockchain:
         return self.wallets.get(wallet_address, 0)
 
     def add_transaction(self, transaction):
+        # Remove 'timestamp' if present to ensure it's only assigned during mining
+        transaction.pop('timestamp', None)
+        
         if transaction['signature'] in self.mempool or any(tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions):
             print("Duplicate transaction detected; not adding to mempool.")
             return
@@ -96,6 +99,7 @@ class Blockchain:
         print(f"Transaction added to mempool: {transaction}")
         if len(self.mempool) >= self.auto_mine_threshold:
             self.mine_and_save()
+
 
     def mine_and_save(self):
         """Mine a new block and save the blockchain state."""
@@ -159,6 +163,7 @@ class Blockchain:
                 print(f"Error broadcasting new block to {peer}: {e}")
         
         return new_block
+
 
     def _process_transaction_in_block(self, sender, recipient, amount):
         if sender not in self.wallets:
