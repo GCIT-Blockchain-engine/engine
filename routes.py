@@ -18,26 +18,26 @@ def setup_routes(app, blockchain, port):
 
     @app.route('/transaction/create', methods=['POST'])
     def create_transaction():
-        data = request.json
-        sender = data.get('sender')
-        recipient = data.get('recipient')
-        amount = data.get('amount')
-        private_key = data.get('private_key')
-        if not sender or not recipient or not amount or not private_key:
-            return jsonify({"error": "Missing fields in request"}), 400
-        try:
-            transaction = blockchain.validate_and_process_transaction(sender, recipient, amount, private_key)
-            # Broadcast the transaction to peers
-            for peer in blockchain.peers:
-                try:
-                    response = requests.post(f'{peer}/transaction/add', json=transaction.to_dict(), timeout=5)
-                    if response.status_code != 200:
-                        print(f"Failed to broadcast transaction to {peer}: {response.text}")
-                except requests.exceptions.RequestException as e:
-                    print(f"Error broadcasting transaction to {peer}: {e}")
-            return jsonify(transaction.to_dict()), 201
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+            data = request.json
+            sender = data.get('sender')
+            recipient = data.get('recipient')
+            amount = data.get('amount')
+            private_key = data.get('private_key')
+            if not sender or not recipient or not amount or not private_key:
+                return jsonify({"error": "Missing fields in request"}), 400
+            try:
+                transaction = blockchain.validate_and_process_transaction(sender, recipient, amount, private_key)
+                # Broadcast the transaction to peers
+                for peer in blockchain.peers:
+                    try:
+                        response = requests.post(f'{peer}/transaction/add', json=transaction.to_dict(), timeout=5)
+                        if response.status_code != 200:
+                            print(f"Failed to broadcast transaction to {peer}: {response.text}")
+                    except requests.exceptions.RequestException as e:
+                        print(f"Error broadcasting transaction to {peer}: {e}")
+                return jsonify(transaction.to_dict()), 201  # This will exclude 'timestamp' if it's None
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
 
     @app.route('/transaction/add', methods=['POST'])
     def add_transaction():
@@ -68,7 +68,8 @@ def setup_routes(app, blockchain, port):
 
     @app.route('/pending_transactions', methods=['GET'])
     def get_pending_transactions():
-        return jsonify({"pending_transactions": list(blockchain.mempool.values())}), 200
+        pending_transactions = [Transaction.from_dict(tx).to_dict() for tx in list(blockchain.mempool.values())]
+        return jsonify({"pending_transactions": pending_transactions}), 200
 
     @app.route('/ico_funds', methods=['GET'])
     def get_ico_funds():
@@ -133,8 +134,12 @@ def setup_routes(app, blockchain, port):
         for block in blockchain.chain:
             for tx in block.transactions:
                 if tx['sender'] == wallet_address or tx['recipient'] == wallet_address:
-                    transactions.append(tx)
+                    # Reconstruct the Transaction object
+                    transaction_obj = Transaction.from_dict(tx)
+                    # Serialize using to_dict to conditionally include timestamp
+                    transactions.append(transaction_obj.to_dict())
         return jsonify({"transactions": transactions}), 200
+
 
 
     @app.route('/transaction/sign', methods=['POST'])

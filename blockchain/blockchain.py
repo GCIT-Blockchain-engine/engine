@@ -1,6 +1,7 @@
 # blockchain/blockchain.py
 
 import time
+import uuid
 import requests
 from blockchain.block import Block
 from blockchain.transaction import Transaction
@@ -38,10 +39,11 @@ class Blockchain:
             "sender": "ICO",
             "recipient": self.genesis_public_key,
             "amount": 1000000,
-            "signature": "genesis"
+            "signature": "genesis",
+            "transaction_id": str(uuid.uuid4()),  # Assign transaction_id
+            "timestamp": 1638316800.0  # Fixed timestamp (e.g., December 1, 2021)
         }]
-        fixed_timestamp = 1638316800.0  # Fixed timestamp (e.g., December 1, 2021)
-        genesis_block = Block(0, ico_transactions, "0", timestamp=fixed_timestamp)
+        genesis_block = Block(0, ico_transactions, "0", timestamp=1638316800.0)
         genesis_block.mine(difficulty=4)
         return genesis_block
 
@@ -95,7 +97,6 @@ class Blockchain:
         if len(self.mempool) >= self.auto_mine_threshold:
             self.mine_and_save()
 
-
     def mine_and_save(self):
         """Mine a new block and save the blockchain state."""
         new_block = self.mine()
@@ -128,17 +129,26 @@ class Blockchain:
             print("No transactions to mine.")
             return None
         pending_transactions = list(self.mempool.values())
-        new_block = Block(len(self.chain), pending_transactions, self.chain[-1].compute_hash())
+        block_timestamp = time.time()
+        
+        # Assign the block's timestamp to each transaction
+        for tx in pending_transactions:
+            tx['timestamp'] = block_timestamp
+        
+        new_block = Block(len(self.chain), pending_transactions, self.chain[-1].compute_hash(), timestamp=block_timestamp)
         new_block.mine(difficulty=4)
         self.chain.append(new_block)
+        
         # Process transactions in the block
         for tx_data in pending_transactions:
             sender = tx_data['sender']
             recipient = tx_data['recipient']
             amount = tx_data['amount']
             self._process_transaction_in_block(sender, recipient, amount)
+        
         self.mempool = {}  # Clear the mempool after mining
         self.save_state()
+        
         # Broadcast the new block to peers
         for peer in self.peers:
             try:
@@ -147,6 +157,7 @@ class Blockchain:
                     print(f"Failed to broadcast block to {peer}: {response.text}")
             except requests.exceptions.RequestException as e:
                 print(f"Error broadcasting new block to {peer}: {e}")
+        
         return new_block
 
     def _process_transaction_in_block(self, sender, recipient, amount):
