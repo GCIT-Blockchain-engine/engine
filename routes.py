@@ -1,4 +1,3 @@
-# routes.py
 
 import time
 import uuid
@@ -141,12 +140,13 @@ def setup_routes(app, blockchain, port):
                     transactions.append(transaction_obj.to_dict())
         return jsonify({"transactions": transactions}), 200
 
-    @app.route('/transaction/sign', methods=['POST'])
+    @ app.route('/transaction/sign', methods=['POST'])
     def sign_transaction():
         """
         Endpoint to sign a transaction.
         Expects JSON with 'sender', 'recipient', 'amount', and 'private_key'.
-        Returns the signed transaction data: 'transaction_id', 'sender', 'recipient', 'amount', and 'signature'.
+        Returns the signed transaction data: 'sender', 'recipient', 'amount', and 'signature'.
+        'transaction_id' will be assigned when the transaction is submitted to the mempool.
         """
         data = request.json
         sender = data.get('sender')
@@ -161,16 +161,14 @@ def setup_routes(app, blockchain, port):
             # Reconstruct the message as per signing logic
             message = f"{sender}{recipient}{amount}"
             signature = Crypto.sign_transaction(private_key, message)
-            transaction_id = str(uuid.uuid4())
 
-            # Construct the signed transaction data
+            # Construct the signed transaction data without 'transaction_id'
             signed_transaction = {
-                "transaction_id": transaction_id,
                 "sender": sender,
                 "recipient": recipient,
                 "amount": amount,
                 "signature": signature
-                # 'timestamp' is intentionally omitted
+                # 'transaction_id' is intentionally omitted
             }
 
             return jsonify(signed_transaction), 200
@@ -206,15 +204,16 @@ def setup_routes(app, blockchain, port):
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
 
-    @app.route('/transaction/submit_offchain', methods=['POST'])
+    @ app.route('/transaction/submit_offchain', methods=['POST'])
     def submit_offchain_transaction():
         """
         Endpoint to submit an off-chain signed transaction to the blockchain.
-        Expects JSON with 'transaction_id', 'sender', 'recipient', 'amount', and 'signature'.
+        Expects JSON with 'sender', 'recipient', 'amount', and 'signature'.
+        'transaction_id' is assigned when the transaction is added to the mempool.
         'timestamp' is assigned during the mining process and should not be included.
         """
         data = request.json
-        required_fields = ['transaction_id', 'sender', 'recipient', 'amount', 'signature']
+        required_fields = ['sender', 'recipient', 'amount', 'signature']
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing fields in transaction data"}), 400
 
@@ -229,7 +228,7 @@ def setup_routes(app, blockchain, port):
             if blockchain.get_balance(transaction.sender) < transaction.amount:
                 return jsonify({"error": "Insufficient funds"}), 400
 
-            # Add transaction to mempool
+            # Add transaction to mempool (transaction_id will be assigned here)
             blockchain.add_transaction(transaction.to_dict())
 
             # Broadcast the transaction to peers
@@ -245,7 +244,7 @@ def setup_routes(app, blockchain, port):
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400  
-        
+
 
     @app.route('/transaction/<transaction_id>', methods=['GET'])
     def get_transaction_by_id(transaction_id):

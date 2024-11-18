@@ -1,4 +1,4 @@
-# blockchain/blockchain.py
+import uuid
 
 import time
 import uuid
@@ -47,6 +47,10 @@ class Blockchain:
         genesis_block.mine(difficulty=4)
         return genesis_block
 
+
+    def generate_transaction_id(self):
+        return str(uuid.uuid4())
+    
     def save_state(self):
         blockchain_state = {
             "chain": [block.to_dict() for block in self.chain],
@@ -91,16 +95,24 @@ class Blockchain:
         # Remove 'timestamp' if present to ensure it's only assigned during mining
         transaction.pop('timestamp', None)
         
+        # Assign 'transaction_id' if not present
+        if 'transaction_id' not in transaction or not transaction['transaction_id']:
+            transaction['transaction_id'] = self.generate_transaction_id()
+        
+        # Check for duplicate signatures
         if transaction['signature'] in self.mempool or any(tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions):
             print("Duplicate transaction detected; not adding to mempool.")
             return
+        
+        # Add transaction to mempool
         self.mempool[transaction['signature']] = transaction
         self.save_state()
         print(f"Transaction added to mempool: {transaction}")
+        
+        # Auto-mine if threshold is reached
         if len(self.mempool) >= self.auto_mine_threshold:
             self.mine_and_save()
-
-
+            
     def mine_and_save(self):
         """Mine a new block and save the blockchain state."""
         new_block = self.mine()
