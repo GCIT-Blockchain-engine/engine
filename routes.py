@@ -245,3 +245,24 @@ def setup_routes(app, blockchain, port):
 
         except Exception as e:
             return jsonify({"error": str(e)}), 400  
+        
+
+    @app.route('/transaction/<transaction_id>', methods=['GET'])
+    def get_transaction_by_id(transaction_id):
+        """
+        Endpoint to get a transaction by its transaction ID.
+        Expects the transaction ID as part of the URL.
+        Returns the transaction data if found.
+        """
+        # Search for the transaction in the blockchain chain
+        for block in blockchain.chain:
+            for tx in block.transactions:
+                # Check if the 'transaction_id' exists before comparing
+                if tx.get('transaction_id') == transaction_id:
+                    # Reconstruct the Transaction object
+                    transaction_obj = Transaction.from_dict(tx)
+                    return jsonify(transaction_obj.to_dict()), 200
+
+        # If transaction not found, return an error
+        return jsonify({"error": "Transaction not found"}), 404
+

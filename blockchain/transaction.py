@@ -1,6 +1,5 @@
-# blockchain/transaction.py
-
 import uuid
+
 
 class Transaction:
     def __init__(self, sender, recipient, amount, signature, transaction_id=None, timestamp=None):
@@ -8,7 +7,7 @@ class Transaction:
         self.recipient = recipient
         self.amount = amount
         self.signature = signature
-        self.transaction_id = transaction_id or self.generate_transaction_id()
+        self.transaction_id = transaction_id or self.generate_transaction_id()  # Ensure it's always generated
         self.timestamp = timestamp  # Do not set timestamp at creation
 
     def generate_transaction_id(self):
@@ -36,6 +35,6 @@ class Transaction:
             recipient=data['recipient'],
             amount=data['amount'],
             signature=data['signature'],
-            transaction_id=data.get('transaction_id'),
+            transaction_id=data.get('transaction_id', str(uuid.uuid4())),  # Ensure 'transaction_id' is added
             timestamp=data.get('timestamp')  # Can be None
         )
