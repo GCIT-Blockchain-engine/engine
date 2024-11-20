@@ -1,7 +1,7 @@
-import uuid
+# blockchain/blockchain.py
 
-import time
 import uuid
+import time
 import requests
 from blockchain.block import Block
 from blockchain.transaction import Transaction
@@ -40,7 +40,6 @@ class Blockchain:
             "recipient": self.genesis_public_key,
             "amount": 1000000,
             "signature": "genesis",
-            "transaction_id": str(uuid.uuid4()),  # Assign transaction_id
             "timestamp": 1638316800.0  # Fixed timestamp (e.g., December 1, 2021)
         }]
         genesis_block = Block(0, ico_transactions, "0", timestamp=1638316800.0)
@@ -48,9 +47,6 @@ class Blockchain:
         return genesis_block
 
 
-    def generate_transaction_id(self):
-        return str(uuid.uuid4())
-    
     def save_state(self):
         blockchain_state = {
             "chain": [block.to_dict() for block in self.chain],
@@ -95,16 +91,14 @@ class Blockchain:
         # Remove 'timestamp' if present to ensure it's only assigned during mining
         transaction.pop('timestamp', None)
         
-        # Assign 'transaction_id' if not present
-        if 'transaction_id' not in transaction or not transaction['transaction_id']:
-            transaction['transaction_id'] = self.generate_transaction_id()
-        
         # Check for duplicate signatures
-        if transaction['signature'] in self.mempool or any(tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions):
+        if transaction['signature'] in self.mempool or any(
+            tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions
+        ):
             print("Duplicate transaction detected; not adding to mempool.")
             return
         
-        # Add transaction to mempool
+        # Add transaction to mempool using signature as key
         self.mempool[transaction['signature']] = transaction
         self.save_state()
         print(f"Transaction added to mempool: {transaction}")

@@ -1,13 +1,12 @@
-import uuid
+# blockchain/transaction.py
 
 class Transaction:
-    def __init__(self, sender, recipient, amount, signature, transaction_id=None, timestamp=None):
+    def __init__(self, sender, recipient, amount, signature, timestamp=None):
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
         self.signature = signature
-        self.transaction_id = transaction_id  # Do not generate here
-        self.timestamp = timestamp  # Do not set timestamp at creation
+        self.timestamp = timestamp  # Assigned during mining
 
     def to_dict(self):
         # Start with mandatory fields
@@ -17,9 +16,7 @@ class Transaction:
             "amount": self.amount,
             "signature": self.signature,
         }
-        # Conditionally add 'transaction_id' and 'timestamp' if they are not None
-        if self.transaction_id is not None:
-            transaction_dict["transaction_id"] = self.transaction_id
+        # Conditionally add 'timestamp' if it is not None
         if self.timestamp is not None:
             transaction_dict["timestamp"] = self.timestamp
         return transaction_dict
@@ -31,6 +28,5 @@ class Transaction:
             recipient=data['recipient'],
             amount=data['amount'],
             signature=data['signature'],
-            transaction_id=data.get('transaction_id'),  # Do not generate
             timestamp=data.get('timestamp')  # Can be None
         )

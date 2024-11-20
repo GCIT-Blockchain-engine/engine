@@ -13,7 +13,7 @@ from flask_cors import CORS
 
 def create_app(blockchain, port):
     app = Flask(__name__)
-    CORS(app, resources={r"/*": {"origins": "http://127.0.0.1:5500"}})
+    CORS(app, resources={r"/*": {"origins": "*"}})
 
     # Exclude current node from its peers list to prevent self-synchronization
     blockchain.peers = [peer for peer in blockchain.peers if peer != f'http://127.0.0.1:{port}']
