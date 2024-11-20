@@ -15,7 +15,7 @@ class Blockchain:
         self.mempool = {}  # Dictionary to store transactions by their signatures
         self.wallets = {}
         self.peers = []  # List of peer URLs
-        self.auto_mine_threshold = 4
+        self.auto_mine_threshold = 2
         
         if genesis_private_key and genesis_public_key:
             self.genesis_private_key = genesis_private_key
@@ -86,15 +86,15 @@ class Blockchain:
         return self.wallets.get(wallet_address, 0)
 
     def add_transaction(self, transaction):
-        """Add a transaction to the mempool and check if we should auto-mine."""
-        if transaction['signature'] in self.mempool:
-            print("Transaction already in mempool.")
+        if transaction['signature'] in self.mempool or any(tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions):
+            print("Duplicate transaction detected; not adding to mempool.")
             return
         self.mempool[transaction['signature']] = transaction
         self.save_state()
         print(f"Transaction added to mempool: {transaction}")
         if len(self.mempool) >= self.auto_mine_threshold:
             self.mine_and_save()
+
 
     def mine_and_save(self):
         """Mine a new block and save the blockchain state."""

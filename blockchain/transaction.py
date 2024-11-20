@@ -1,25 +1,42 @@
 # blockchain/transaction.py
 
+import uuid
+import time
+
 class Transaction:
-    def __init__(self, sender, recipient, amount, signature):
+    def __init__(self, sender, recipient, amount, signature, transaction_id=None, timestamp=None):
         self.sender = sender
         self.recipient = recipient
         self.amount = amount
         self.signature = signature
-
+        self.transaction_id = transaction_id or self.generate_transaction_id()
+        self.timestamp = timestamp or self.generate_timestamp()
+    
+    def generate_transaction_id(self):
+        # Generate a unique transaction ID using UUID4
+        return str(uuid.uuid4())
+    
+    def generate_timestamp(self):
+        # Generate the current timestamp
+        return time.time()
+    
     def to_dict(self):
         return {
-            'sender': self.sender,
-            'recipient': self.recipient,
-            'amount': self.amount,
-            'signature': self.signature
+            "transaction_id": self.transaction_id,
+            "sender": self.sender,
+            "recipient": self.recipient,
+            "amount": self.amount,
+            "signature": self.signature,
+            "timestamp": self.timestamp
         }
-
+    
     @classmethod
-    def from_dict(cls, tx_data):
+    def from_dict(cls, data):
         return cls(
-            sender=tx_data['sender'],
-            recipient=tx_data['recipient'],
-            amount=tx_data['amount'],
-            signature=tx_data['signature']
+            sender=data['sender'],
+            recipient=data['recipient'],
+            amount=data['amount'],
+            signature=data['signature'],
+            transaction_id=data.get('transaction_id'),
+            timestamp=data.get('timestamp')
         )

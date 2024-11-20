@@ -3,9 +3,9 @@
 from cryptolib.crypto import Crypto
 
 def main():
-    private_key, public_key = Crypto.generate_keypair()
-    print(f"Fixed Genesis Private Key (Base64): {private_key}")
-    print(f"Fixed Genesis Public Key (Base64): {public_key}")
+    fixed_genesis_private_key, fixed_genesis_public_key = Crypto.generate_keypair()
+    print("Fixed Genesis Private Key:", fixed_genesis_private_key)
+    print("Fixed Genesis Public Key:", fixed_genesis_public_key)
 
 if __name__ == "__main__":
     main()
