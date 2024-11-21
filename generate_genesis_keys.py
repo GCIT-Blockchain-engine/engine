@@ -1,5 +1,3 @@
-# generate_genesis_keys.py
-
 from cryptolib.crypto import Crypto
 
 def main():

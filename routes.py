@@ -1,5 +1,3 @@
-# routes.py
-
 import time
 import uuid
 from flask import request, jsonify
@@ -28,7 +26,6 @@ def setup_routes(app, blockchain, port):
             return jsonify({"error": "Missing fields in request"}), 400
         try:
             transaction = blockchain.validate_and_process_transaction(sender, recipient, amount, private_key)
-            # Broadcast the transaction to peers
             for peer in blockchain.peers:
                 try:
                     response = requests.post(f'{peer}/transaction/add', json=transaction.to_dict(), timeout=5)
@@ -36,7 +33,7 @@ def setup_routes(app, blockchain, port):
                         print(f"Failed to broadcast transaction to {peer}: {response.text}")
                 except requests.exceptions.RequestException as e:
                     print(f"Error broadcasting transaction to {peer}: {e}")
-            return jsonify(transaction.to_dict()), 201  # This will exclude 'timestamp' if it's None
+            return jsonify(transaction.to_dict()), 201
         except ValueError as e:
             return jsonify({"error": str(e)}), 400
 
@@ -83,31 +80,25 @@ def setup_routes(app, blockchain, port):
         incoming_wallets = data.get('wallets')
         incoming_pending_transactions = data.get('pending_transactions')
 
-        # Validate incoming data
         if incoming_chain is None or incoming_wallets is None or incoming_pending_transactions is None:
             return jsonify({"message": "Invalid incoming data"}), 400
 
-        # Convert incoming chain data to Block objects
         incoming_chain_objs = [Block.from_dict(block_data) for block_data in incoming_chain]
 
-        # Validate the incoming chain
         if not blockchain.is_valid_chain(incoming_chain_objs):
             return jsonify({"message": "Invalid incoming chain"}), 400
 
-        # Check if the incoming chain is longer
         if len(incoming_chain_objs) > len(blockchain.chain):
             blockchain.chain = incoming_chain_objs
             blockchain.recalculate_wallets()
-            # Merge incoming pending transactions with existing mempool
             for tx in incoming_pending_transactions:
-                blockchain.mempool[tx['signature']] = tx
+                blockchain.mempool[tx['transaction_id']] = tx
             blockchain.save_state()
             print("Blockchain synchronized with incoming data.")
             return jsonify({"message": "Blockchain updated"}), 200
         else:
-            # Optionally, you can also merge mempools even if chains are same length
             for tx in incoming_pending_transactions:
-                blockchain.mempool[tx['signature']] = tx
+                blockchain.mempool[tx['transaction_id']] = tx
             blockchain.save_state()
             print("Mempool merged with incoming data.")
             return jsonify({"message": "Mempool merged"}), 200
@@ -135,20 +126,12 @@ def setup_routes(app, blockchain, port):
         for block in blockchain.chain:
             for tx in block.transactions:
                 if tx['sender'] == wallet_address or tx['recipient'] == wallet_address:
-                    # Reconstruct the Transaction object
                     transaction_obj = Transaction.from_dict(tx)
-                    # Serialize using to_dict to conditionally include timestamp
                     transactions.append(transaction_obj.to_dict())
         return jsonify({"transactions": transactions}), 200
 
     @app.route('/transaction/sign', methods=['POST'])
     def sign_transaction():
-        """
-        Endpoint to sign a transaction.
-        Expects JSON with 'sender', 'recipient', 'amount', and 'private_key'.
-        Returns the signed transaction data: 'sender', 'recipient', 'amount', and 'signature'.
-        The 'signature' includes the embedded UUID.
-        """
         data = request.json
         sender = data.get('sender')
         recipient = data.get('recipient')
@@ -159,17 +142,14 @@ def setup_routes(app, blockchain, port):
             return jsonify({"error": "Missing fields in request"}), 400
 
         try:
-            # Reconstruct the message as per signing logic
             message = f"{sender}{recipient}{amount}"
             signature = Crypto.sign_transaction(private_key, message)
 
-            # Construct the signed transaction data without 'transaction_id'
             signed_transaction = {
                 "sender": sender,
                 "recipient": recipient,
                 "amount": amount,
                 "signature": signature
-                # 'transaction_id' is intentionally omitted
             }
 
             return jsonify(signed_transaction), 200
@@ -179,12 +159,6 @@ def setup_routes(app, blockchain, port):
 
     @app.route('/transaction/verify', methods=['POST'])
     def verify_transaction():
-        """
-        Endpoint to verify/validate a transaction signature.
-        Expects JSON with 'sender', 'recipient', 'amount', and 'signature'.
-        Reconstructs the message from 'sender', 'recipient', and 'amount'.
-        Returns whether the signature is valid.
-        """
         data = request.json
         sender = data.get('sender')
         recipient = data.get('recipient')
@@ -194,7 +168,6 @@ def setup_routes(app, blockchain, port):
         if not sender or not recipient or not amount or not signature:
             return jsonify({"error": "Missing fields in request"}), 400
 
-        # Reconstruct the message as per signing logic
         message = f"{sender}{recipient}{amount}"
         print(f"Verifying transaction with message: {message}")
         is_valid = Crypto.verify_signature(sender, message, signature)
@@ -203,15 +176,8 @@ def setup_routes(app, blockchain, port):
         }
         return jsonify(verification_result), 200
 
-
-
     @app.route('/transaction/submit_offchain', methods=['POST'])
     def submit_offchain_transaction():
-        """
-        Endpoint to submit an off-chain signed transaction to the blockchain.
-        Expects JSON with 'sender', 'recipient', 'amount', and 'signature'.
-        'timestamp' is assigned during the mining process and should not be included.
-        """
         data = request.json
         required_fields = ['sender', 'recipient', 'amount', 'signature']
         if not all(field in data for field in required_fields):
@@ -219,19 +185,15 @@ def setup_routes(app, blockchain, port):
 
         try:
             transaction = Transaction.from_dict(data)
-            # Verify the transaction signature
             message = f"{transaction.sender}{transaction.recipient}{transaction.amount}"
             if not Crypto.verify_signature(transaction.sender, message, transaction.signature):
                 return jsonify({"error": "Invalid signature"}), 400
 
-            # Check sender's balance
             if blockchain.get_balance(transaction.sender) < transaction.amount:
                 return jsonify({"error": "Insufficient funds"}), 400
 
-            # Add transaction to mempool (signature includes embedded UUID)
             blockchain.add_transaction(transaction.to_dict())
 
-            # Broadcast the transaction to peers
             for peer in blockchain.peers:
                 try:
                     response = requests.post(f'{peer}/transaction/add', json=transaction.to_dict(), timeout=5)
@@ -243,16 +205,17 @@ def setup_routes(app, blockchain, port):
             return jsonify({"message": "Off-chain transaction submitted successfully"}), 200
 
         except Exception as e:
-            return jsonify({"error": str(e)}), 400  
-
+            return jsonify({"error": str(e)}), 400
 
     @app.route('/transaction/<transaction_id>', methods=['GET'])
     def get_transaction_by_id(transaction_id):
-        """
-        Endpoint to get a transaction by its transaction ID.
-        Expects the transaction ID as part of the URL.
-        Returns the transaction data if found.
-        """
-        # Since we no longer have transaction_id, this endpoint may not function as intended.
-        # It could be repurposed or removed.
-        return jsonify({"error": "Transaction ID not supported"}), 400
+        for block in blockchain.chain:
+            for tx in block.transactions:
+                if tx.get('transaction_id') == transaction_id:
+                    transaction_obj = Transaction.from_dict(tx)
+                    return jsonify(transaction_obj.to_dict()), 200
+        tx = blockchain.mempool.get(transaction_id)
+        if tx:
+            transaction_obj = Transaction.from_dict(tx)
+            return jsonify(transaction_obj.to_dict()), 200
+        return jsonify({"error": "Transaction not found"}), 404

@@ -1,5 +1,3 @@
-# database/couchdb_handler.py
-
 import os
 import couchdb
 from blockchain.block import Block
@@ -21,7 +19,6 @@ class CouchDBHandler:
 
     def save_block(self, block):
         try:
-            # Use block index as document ID to prevent duplicates
             doc_id = f"block_{block.index}"
             if doc_id not in self.db:
                 self.db.save({"_id": doc_id, **block.to_dict()})

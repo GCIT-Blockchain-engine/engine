@@ -1,5 +1,3 @@
-# blockchain/blockchain.py
-
 import uuid
 import time
 import requests
@@ -13,20 +11,20 @@ class Blockchain:
     def __init__(self, db_handler, genesis_private_key=None, genesis_public_key=None):
         self.couchdb = db_handler
         self.chain = []
-        self.mempool = {}  # Dictionary to store transactions by their signatures
+        self.mempool = {}  
         self.wallets = {}
-        self.peers = []  # List of peer URLs
+        self.peers = []
         self.auto_mine_threshold = 2
-        
+
         if genesis_private_key and genesis_public_key:
             self.genesis_private_key = genesis_private_key
             self.genesis_public_key = genesis_public_key
         else:
             self.genesis_private_key, self.genesis_public_key = Crypto.generate_keypair()
-        
-        self.ico_funds = {"GENESIS_WALLET": 1000000}  # Initialize ICO funds
+
+        self.ico_funds = {"GENESIS_WALLET": 1000000}
         self.load_state()
-        
+
         if not self.chain:
             self.chain = [self.create_genesis_block()]
             self.wallets = {self.genesis_public_key: 1000000}
@@ -34,23 +32,21 @@ class Blockchain:
             print("Initialized new blockchain with genesis block")
 
     def create_genesis_block(self):
-        # Transactions: "ICO" sends 1,000,000 to "GENESIS_WALLET"
         ico_transactions = [{
             "sender": "ICO",
             "recipient": self.genesis_public_key,
             "amount": 1000000,
             "signature": "genesis",
-            "timestamp": 1638316800.0  # Fixed timestamp (e.g., December 1, 2021)
+            "timestamp": 1638316800.0
         }]
         genesis_block = Block(0, ico_transactions, "0", timestamp=1638316800.0)
         genesis_block.mine(difficulty=4)
         return genesis_block
 
-
     def save_state(self):
         blockchain_state = {
             "chain": [block.to_dict() for block in self.chain],
-            "mempool": list(self.mempool.values()),  # Save mempool as a list
+            "mempool": list(self.mempool.values()),
             "wallets": self.wallets,
             "ico_funds": self.ico_funds,
             "genesis_public_key": self.genesis_public_key
@@ -61,7 +57,7 @@ class Blockchain:
         state = self.couchdb.load_blockchain_state()
         if state:
             self.chain = [Block.from_dict(block_data) for block_data in state.get("chain", [])]
-            self.mempool = {tx['signature']: tx for tx in state.get("mempool", [])}
+            self.mempool = {tx['transaction_id']: tx for tx in state.get("mempool", [])}
             self.wallets = state.get('wallets', {state.get('genesis_public_key', "GENESIS_WALLET"): 1000000})
             self.ico_funds = state.get('ico_funds', {"GENESIS_WALLET": 1000000})
             self.genesis_public_key = state.get('genesis_public_key', "GENESIS_WALLET")
@@ -88,25 +84,24 @@ class Blockchain:
         return self.wallets.get(wallet_address, 0)
 
     def add_transaction(self, transaction):
-        # Remove 'timestamp' if present to ensure it's only assigned during mining
         transaction.pop('timestamp', None)
-        
-        # Check for duplicate signatures
-        if transaction['signature'] in self.mempool or any(
-            tx['signature'] == transaction['signature'] for block in self.chain for tx in block.transactions
+
+        if 'transaction_id' not in transaction or transaction['transaction_id'] is None:
+            transaction['transaction_id'] = str(uuid.uuid4())
+
+        if transaction['transaction_id'] in self.mempool or any(
+            tx.get('transaction_id') == transaction['transaction_id'] for block in self.chain for tx in block.transactions
         ):
             print("Duplicate transaction detected; not adding to mempool.")
             return
-        
-        # Add transaction to mempool using signature as key
-        self.mempool[transaction['signature']] = transaction
+
+        self.mempool[transaction['transaction_id']] = transaction
         self.save_state()
         print(f"Transaction added to mempool: {transaction}")
-        
-        # Auto-mine if threshold is reached
+
         if len(self.mempool) >= self.auto_mine_threshold:
             self.mine_and_save()
-            
+
     def mine_and_save(self):
         """Mine a new block and save the blockchain state."""
         new_block = self.mine()
@@ -140,26 +135,23 @@ class Blockchain:
             return None
         pending_transactions = list(self.mempool.values())
         block_timestamp = time.time()
-        
-        # Assign the block's timestamp to each transaction
+
         for tx in pending_transactions:
             tx['timestamp'] = block_timestamp
-        
+
         new_block = Block(len(self.chain), pending_transactions, self.chain[-1].compute_hash(), timestamp=block_timestamp)
         new_block.mine(difficulty=4)
         self.chain.append(new_block)
-        
-        # Process transactions in the block
+
         for tx_data in pending_transactions:
             sender = tx_data['sender']
             recipient = tx_data['recipient']
             amount = tx_data['amount']
             self._process_transaction_in_block(sender, recipient, amount)
-        
-        self.mempool = {}  # Clear the mempool after mining
+
+        self.mempool = {}  
         self.save_state()
-        
-        # Broadcast the new block to peers
+
         for peer in self.peers:
             try:
                 response = requests.post(f'{peer}/add_block', json=new_block.to_dict(), timeout=5)
@@ -167,9 +159,8 @@ class Blockchain:
                     print(f"Failed to broadcast block to {peer}: {response.text}")
             except requests.exceptions.RequestException as e:
                 print(f"Error broadcasting new block to {peer}: {e}")
-        
-        return new_block
 
+        return new_block
 
     def _process_transaction_in_block(self, sender, recipient, amount):
         if sender not in self.wallets:
@@ -190,7 +181,7 @@ class Blockchain:
     def recalculate_wallets(self):
         """Recalculate wallet balances based on the current chain."""
         self.wallets = {self.genesis_public_key: 1000000}
-        for block in self.chain[1:]:  # Skip genesis block
+        for block in self.chain[1:]:  
             for tx in block.transactions:
                 sender = tx['sender']
                 recipient = tx['recipient']
@@ -219,7 +210,6 @@ class Blockchain:
         if not chain:
             print("Empty chain")
             return False
-        # Ensure all chains start with the same genesis block
         genesis_block = chain[0]
         if self.chain and len(self.chain) > 0:
             current_genesis = self.chain[0]
@@ -232,7 +222,6 @@ class Blockchain:
             if current_block.previous_hash != previous_block.compute_hash():
                 print(f"Invalid previous hash at block {i}")
                 return False
-            # Verify proof of work
             if not current_block.compute_hash().startswith('0' * 4):
                 print(f"Block {i} does not meet difficulty requirements")
                 return False
@@ -250,15 +239,14 @@ class Blockchain:
     def add_block(self, block):
         if self.is_valid_new_block(block, self.chain[-1]):
             self.chain.append(block)
-            # Process transactions in the block
+
             for tx_data in block.transactions:
                 sender = tx_data['sender']
                 recipient = tx_data['recipient']
                 amount = tx_data['amount']
-                if sender != "ICO":
-                    self._process_transaction_in_block(sender, recipient, amount)
-            # Remove transactions from mempool
-            self.mempool = {tx['signature']: tx for tx in self.mempool.values() if tx['signature'] not in [tx['signature'] for tx in block.transactions]}
+                self._process_transaction_in_block(sender, recipient, amount)
+            mined_tx_ids = [tx['transaction_id'] for tx in block.transactions if 'transaction_id' in tx]
+            self.mempool = {tx_id: tx for tx_id, tx in self.mempool.items() if tx_id not in mined_tx_ids}
             self.save_state()
             print(f"Block {block.index} added to the chain.")
             return True

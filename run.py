@@ -1,5 +1,3 @@
-# main.py
-
 import threading
 import requests
 import time
@@ -15,7 +13,6 @@ def create_app(blockchain, port):
     app = Flask(__name__)
     CORS(app, resources={r"/*": {"origins": "*"}})
 
-    # Exclude current node from its peers list to prevent self-synchronization
     blockchain.peers = [peer for peer in blockchain.peers if peer != f'http://127.0.0.1:{port}']
     setup_routes(app, blockchain, port)
     return app
@@ -32,18 +29,16 @@ def sync_with_peers(blockchain, port, peers):
         time.sleep(10)
         for peer in peers:
             try:
-                # Fetch peer data
                 response_chain = requests.get(f'{peer}/request_chain', timeout=5)
                 response_wallets = requests.get(f'{peer}/wallets', timeout=5)
                 response_pending_transactions = requests.get(f'{peer}/pending_transactions', timeout=5)
-                
+
                 if response_chain.status_code == 200 and response_wallets.status_code == 200 and response_pending_transactions.status_code == 200:
                     chain = response_chain.json().get('chain')
                     wallets = response_wallets.json().get('wallets')
                     pending_transactions = response_pending_transactions.json().get('pending_transactions')
-                    
+
                     if chain and wallets and pending_transactions:
-                        # Merge and sync without duplicating
                         sync_data = {
                             'chain': chain,
                             'wallets': wallets,
@@ -56,11 +51,9 @@ def sync_with_peers(blockchain, port, peers):
                 print(f"Error syncing with peer {peer}: {e}")
 
 
-
 def main():
-    # Fixed Genesis Wallet Key Pair (Ensure these keys are URL-safe Base64 encoded without padding)
-    fixed_genesis_private_key = "66DfCadKUjJBkBbOlURslW1V020v6MzLq7ExQb15j_A"  # Example URL-safe key
-    fixed_genesis_public_key = "AtV2Ohy1KCwD_RAJ4D6yB60I-CxBbtpubhGmr55LTtMQ"    # Example URL-safe key
+    fixed_genesis_private_key = "66DfCadKUjJBkBbOlURslW1V020v6MzLq7ExQb15j_A"
+    fixed_genesis_public_key = "AtV2Ohy1KCwD_RAJ4D6yB60I-CxBbtpubhGmr55LTtMQ"
 
     configs = [
         (5000, 'blockchain_node1', ['http://127.0.0.1:5001', 'http://127.0.0.1:5002']),
@@ -71,16 +64,13 @@ def main():
     for port, db_name, peers in configs:
         db_handler = CouchDBHandler(db_name)
         blockchain = Blockchain(db_handler, fixed_genesis_private_key, fixed_genesis_public_key)
-        blockchain.peers = peers  # Assign peers
-        # Start Flask app thread
+        blockchain.peers = peers
         app_thread = threading.Thread(target=run_app, args=(blockchain, port), daemon=True)
         app_thread.start()
         threads.append(app_thread)
-        # Start synchronization thread
         sync_thread = threading.Thread(target=sync_with_peers, args=(blockchain, port, peers), daemon=True)
         sync_thread.start()
         threads.append(sync_thread)
-    # Keep the main thread alive to allow daemon threads to run
     try:
         while True:
             time.sleep(1)

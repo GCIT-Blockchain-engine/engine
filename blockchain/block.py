@@ -1,5 +1,3 @@
-# blockchain/block.py
-
 import time
 from cryptolib.crypto import Crypto
 from blockchain.merkle_tree import MerkleTree

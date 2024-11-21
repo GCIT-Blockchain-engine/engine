@@ -1,5 +1,3 @@
-# blockchain/merkle_tree.py
-
 from cryptolib.crypto import Crypto
 
 
@@ -20,4 +18,4 @@ class MerkleTree:
             right = hashes[i + 1] if i + 1 < len(hashes) else left
             combined_hash = Crypto.hash(left + right)
             new_level.append(combined_hash)
-        return self.build_merkle_tree(new_level) 
+        return self.build_merkle_tree(new_level)
