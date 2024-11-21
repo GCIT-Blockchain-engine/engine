@@ -672,67 +672,7 @@ Submits an off-chain signed transaction to the blockchain.
 
 ---
 
-## 11. **Get Transaction Details**
 
-### **Endpoint:** `/transaction/details`
-
-**Method:** `POST`
-
-### **Request Body:**
-
-```
-{
-  "transaction_id": "your_transaction_id"
-}
-```
-
-### **Response Example:**
-
-- **Pending Transaction:**
-    
-
-```
-{
-  "transaction_id": "your_transaction_id",
-  "sender": "sender_public_key",
-  "recipient": "recipient_public_key",
-  "amount": 100,
-  "signature": "transaction_signature",
-  "status": "pending"
-}
-```
-
-- **Confirmed Transaction:**
-    
-
-```
-{
-  "transaction_id": "your_transaction_id",
-  "sender": "sender_public_key",
-  "recipient": "recipient_public_key",
-  "amount": 100,
-  "signature": "transaction_signature",
-  "timestamp": 1701269300.654321,
-  "status": "confirmed",
-  "block_index": 1,
-  "block_timestamp": 1701269300.654321
-}
-```
-
-- **Transaction Not Found:**
-    
-
-```
-{
-  "error": "Transaction not found"
-}
-```
-
-### **Description:**
-
-Retrieves the details of a transaction using its `transaction_id`. Indicates whether the transaction is pending or confirmed and includes block details if applicable.
-
----
 
 ## **Usage Notes:**
 
