@@ -191,9 +191,8 @@ File: `routes.py`
     - `/transaction/verify` (POST): Verifies a transaction signature.
         
     - `/transaction/submit_offchain` (POST): Submits an off-chain transaction.
-        
-    - `/transaction/details` (POST): Retrieves transaction details by `transaction_id`.
-        
+
+                
 - **Blockchain Endpoints:**
     
     - `/mine` (GET): Mines a block.
@@ -622,13 +621,7 @@ Returns the remaining ICO funds in the genesis wallet.
 
 **Method:** `POST`
 
-### **Request Body:**
 
-```
-{
-  "transaction_id": "your_transaction_id"
-}
-```
 
 ### **Response Example:**
 
@@ -650,13 +643,7 @@ Verifies the signature of a transaction using its `transaction_id`.
 
 **Method:** `POST`
 
-### **Request Body:**
 
-```
-{
-  "transaction_id": "your_transaction_id"
-}
-```
 
 ### **Response Example:**
 
