@@ -4,3 +4,6 @@ requests
 pycryptodome
 websockets
 ecdsa
+requests
+werkzeug
+flask-cors
