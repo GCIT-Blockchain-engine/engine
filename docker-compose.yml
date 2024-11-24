@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspaces/engine-main:cached
+    command: python run.py  # Replace with your app's startup command
+    environment:
+      - FLASK_ENV=development
+      - COUCHDB_URL=http://admin:admin@couchdb:5984
+    depends_on:
+      - couchdb
+    ports:
+      - "5000:5000"
+    network_mode: bridge
+
+  couchdb:
+    image: couchdb:3.2.2
+    ports:
+      - "5984:5984"
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=admin
+    volumes:
+      - couchdb_data:/opt/couchdb/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5984"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  couchdb_data:
